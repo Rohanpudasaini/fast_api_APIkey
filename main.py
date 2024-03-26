@@ -2,7 +2,12 @@ from fastapi import FastAPI, status, Security
 from fastapi.security import APIKeyHeader
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel, EmailStr
+from models import User
+from database_connection import session
+from sqlalchemy import Select
+from sqlalchemy.exc import IntegrityError
 import base64
+
 
 apikeyHeader= APIKeyHeader(name='X-API-Key')
 
@@ -36,33 +41,35 @@ def decode_APIkey(apiKey:str):
         value = value
         result[key] = value
     
-    username = result['username']
-    user_found = fake_db.get(username)
-    
+    # username = result['username']
+    username = result.get('username')
+    statement = Select(User).where(User.username==username)
+    user_found = session.execute(statement).one_or_none()
+
     if user_found:
-        if user_found['api_key'] == apiKey:
+        if user_found[0].api_key == apiKey:
             return True
     return False
+
     
 
 @app.post("/signup", status_code=status.HTTP_201_CREATED)
 def signup(signupModel:SignupModel):
-    if signupModel.username in fake_db:
+    api_key = create_APIkey(signupModel.username,signupModel.password)
+    user_object_to_add = User(
+        username = signupModel.username,
+        password = signupModel.password,
+        email = signupModel.email,
+        contact = signupModel.contact,
+        api_key=api_key)
+    session.add(user_object_to_add)
+    try:
+        session.commit()
+    except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Username already exsist",
         )
-    payload = {
-        "username":signupModel.username,
-        "password": signupModel.password,
-        "email": signupModel.email,
-        }
-    if signupModel.contact:
-        payload.update({'contact':signupModel.contact})
-    api_key = create_APIkey(signupModel.username,signupModel.password)
-    payload.update({'api_key':api_key})
-    fake_db[signupModel.username] = payload
-    print(fake_db)
     return{
         'info':'Please save this api key',
         'api_key':api_key

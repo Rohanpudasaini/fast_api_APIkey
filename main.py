@@ -13,13 +13,6 @@ apikeyHeader= APIKeyHeader(name='X-API-Key')
 
 app = FastAPI(title="API Key Validation")
 
-fake_db={
-    'admin': {'username': 'admin', 'password': 'admin', 'email': 'admin@example.com', 'contact': 123456, 'api_key': 'YWRtaW5hZG1pbkhlbGxvV09STEQ='}, 
-    'rohan': {'username': 'rohan', 'password': 'rohan1', 'email': 'rohan@example.com', 'contact': 123456789, 'api_key': 'cm9oYW5yb2hhbjFIZWxsb1dPUkxE'}
-    }
-
-
-
 SIMPLE_SALT="HelloWORLD"
 class SignupModel(BaseModel):
     username:str

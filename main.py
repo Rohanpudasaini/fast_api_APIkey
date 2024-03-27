@@ -1,8 +1,8 @@
-from fastapi import FastAPI, status, Security
+from fastapi import FastAPI, Header, status, Security
 from fastapi.security import APIKeyHeader
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel, EmailStr
-from models import User
+from models import User, get_password_hash, verify_password
 from database_connection import session
 from sqlalchemy import Select
 from sqlalchemy.exc import IntegrityError
@@ -51,7 +51,7 @@ def signup(signupModel:SignupModel):
     api_key = create_APIkey(signupModel.username,signupModel.password)
     user_object_to_add = User(
         username = signupModel.username,
-        password = signupModel.password,
+        password = get_password_hash(signupModel.password),
         email = signupModel.email,
         contact = signupModel.contact,
         api_key=api_key)
@@ -59,9 +59,10 @@ def signup(signupModel:SignupModel):
     try:
         session.commit()
     except IntegrityError:
+        session.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Username already exsist",
+            detail="Username or email already exsist",
         )
     return{
         'info':'Please save this api key',
@@ -69,7 +70,7 @@ def signup(signupModel:SignupModel):
     }
 
 @app.get('/info')
-def get_api_info(api_key:str=Security(apikeyHeader)):
+def get_api_info(api_key:str=Header(title='X-API-key')):
     return (decode_APIkey(api_key))
 
 
